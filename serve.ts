@@ -1,6 +1,6 @@
-// Ojek Rush — tiny local dev server: serves game/ at http://localhost:8080
+// Warung Rush — tiny local dev server: serves game/ at http://localhost:8080
 // so the game can be played and screenshotted in a desktop browser.
-// Run: node serve.ts   (from this directory)
+// Run from this directory:  node serve.ts
 
 import { createServer } from 'node:http';
 import { readFileSync, existsSync } from 'node:fs';
@@ -28,12 +28,11 @@ const server = createServer((req, res) => {
   }
   res.writeHead(200, {
     'content-type': types[extname(filePath)] ?? 'application/octet-stream',
-    // Never cache while screenshotting: the browser must show the latest build.
     'cache-control': 'no-store',
   });
   res.end(readFileSync(filePath));
 });
 
 server.listen(8080, () => {
-  console.log('Ojek Rush at http://localhost:8080');
+  console.log('Warung Rush at http://localhost:8080');
 });

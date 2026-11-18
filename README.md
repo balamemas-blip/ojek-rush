@@ -4,14 +4,15 @@
 [![rank](https://make.fun/badge/best-game-01/balamemas-blip/ojek-rush/rank.svg)](https://make.fun/bounty/best-game-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=best-game-01)
 [![reward](https://make.fun/badge/best-game-01/balamemas-blip/ojek-rush/reward.svg)](https://make.fun/bounty/best-game-01?utm_source=github&utm_medium=readme&utm_campaign=best-game-01)
 
-Ojek Rush is a 2D arcade delivery game. Ride your motorbike through three lanes of traffic, pick up food orders at warungs, and deliver them to houses before the timer runs out. Earn fares with time bonuses and combos, grab coins and fuel cans, and finish 10 deliveries to complete the shift — from the morning rush to a night shift under your headlight.
+Warung Rush — a time-management serving game: run a small Indonesian warung at dinner rush, take orders, cook nasi goreng, mie ayam and es teh, and serve customers before their patience runs out.
 
 ## Run it
 
 ```sh
 node serve.ts
-# then open http://localhost:8080
 ```
+
+Then open http://localhost:8080 in a desktop browser. Click a table to take an order and serve, press 1/2/3 to cook, Left/Right to pick a table, Enter to interact, P to pause. Serve 10 orders before the day timer ends to win.
 
 ---
 

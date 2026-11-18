@@ -1,96 +1,61 @@
-// Ojek Rush — synthesized sound, no audio files.
-// Every effect is a small WebAudio oscillator burst, so the game ships
-// zero assets and never fetches anything. The engine hum is a looped
-// oscillator whose pitch follows the road speed.
+// Warung Rush — sound: tiny WebAudio synth, no audio files.
+// The context is created lazily on the first user gesture, so the game
+// never blocks on audio and never needs a network request.
 
-export function createAudio() {
-  const audio = {
-    context: null,
-    muted: false,
-    engineOsc: null,
-    engineGain: null,
-  };
+let ctx = null;
+let muted = false;
 
-  // Browsers only let audio start after a user gesture; call on first input.
-  audio.unlock = function unlock() {
-    if (audio.context) {
-      if (audio.context.state === 'suspended') audio.context.resume();
-      return;
+function ensureCtx() {
+  if (!ctx) {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) ctx = new AC();
+    } catch (e) {
+      ctx = null;
     }
-    const Ctor = window.AudioContext ?? window.webkitAudioContext;
-    if (!Ctor) return;
-    audio.context = new Ctor();
-    audio.engineOsc = audio.context.createOscillator();
-    audio.engineOsc.type = 'sawtooth';
-    audio.engineOsc.frequency.value = 55;
-    audio.engineGain = audio.context.createGain();
-    audio.engineGain.gain.value = 0.0;
-    const filter = audio.context.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = 320;
-    audio.engineOsc.connect(filter);
-    filter.connect(audio.engineGain);
-    audio.engineGain.connect(audio.context.destination);
-    audio.engineOsc.start();
-  };
-
-  function tone(freq, seconds, type, volume, slideTo) {
-    if (!audio.context || audio.muted) return;
-    const now = audio.context.currentTime;
-    const osc = audio.context.createOscillator();
-    const gain = audio.context.createGain();
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, now);
-    if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, now + seconds);
-    gain.gain.setValueAtTime(volume, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + seconds);
-    osc.connect(gain);
-    gain.connect(audio.context.destination);
-    osc.start(now);
-    osc.stop(now + seconds + 0.02);
   }
-
-  audio.setEngine = function setEngine(speedRatio) {
-    if (!audio.engineOsc || !audio.engineGain) return;
-    const target = audio.muted ? 0 : 0.018 + speedRatio * 0.03;
-    audio.engineGain.gain.setTargetAtTime(target, audio.context.currentTime, 0.1);
-    audio.engineOsc.frequency.setTargetAtTime(50 + speedRatio * 90, audio.context.currentTime, 0.1);
-  };
-
-  audio.coin = function coin() { tone(880, 0.12, 'sine', 0.15, 1320); };
-  audio.nearMiss = function nearMiss() { tone(1200, 0.09, 'sine', 0.07, 320); };
-  audio.pickup = function pickup() { tone(523, 0.1, 'triangle', 0.2); tone(784, 0.14, 'triangle', 0.2); };
-  audio.deliver = function deliver() {
-    tone(659, 0.1, 'triangle', 0.2);
-    setTimeout(() => tone(784, 0.1, 'triangle', 0.2), 90);
-    setTimeout(() => tone(1047, 0.2, 'triangle', 0.22), 180);
-  };
-  audio.crash = function crash() { tone(140, 0.35, 'sawtooth', 0.3, 40); };
-  audio.fuel = function fuel() { tone(392, 0.15, 'sine', 0.18, 587); };
-  audio.click = function click() { tone(660, 0.06, 'square', 0.08); };
-  audio.horn = function horn() { tone(370, 0.18, 'square', 0.12); tone(466, 0.18, 'square', 0.1); };
-  audio.levelUp = function levelUp() {
-    tone(523, 0.1, 'triangle', 0.2);
-    setTimeout(() => tone(659, 0.1, 'triangle', 0.2), 100);
-    setTimeout(() => tone(784, 0.18, 'triangle', 0.2), 200);
-  };
-  audio.gameOver = function gameOver() {
-    tone(392, 0.25, 'triangle', 0.2, 311);
-    setTimeout(() => tone(311, 0.4, 'triangle', 0.2, 233), 220);
-  };
-  audio.win = function win() {
-    [523, 659, 784, 1047].forEach((freq, i) => {
-      setTimeout(() => tone(freq, 0.25, 'triangle', 0.2), i * 130);
-    });
-  };
-
-  audio.toggleMute = function toggleMute() {
-    audio.muted = !audio.muted;
-    if (audio.engineGain) {
-      audio.engineGain.gain.value = audio.muted ? 0 : 0.02;
-    }
-    return audio.muted;
-  };
-
-  return audio;
+  if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
+  return ctx;
 }
+
+export function unlockAudio() {
+  ensureCtx();
+}
+
+export function toggleMute() {
+  muted = !muted;
+  return muted;
+}
+
+export function isMuted() {
+  return muted;
+}
+
+function tone(freq, durMs, type, gain, whenMs = 0) {
+  if (muted) return;
+  const ac = ensureCtx();
+  if (!ac) return;
+  const t0 = ac.currentTime + whenMs / 1000;
+  const osc = ac.createOscillator();
+  const g = ac.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, t0);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(gain, t0 + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + durMs / 1000);
+  osc.connect(g);
+  g.connect(ac.destination);
+  osc.start(t0);
+  osc.stop(t0 + durMs / 1000 + 0.05);
+}
+
+export const sfx = {
+  click() { tone(660, 60, 'sine', 0.12); },
+  takeOrder() { tone(520, 70, 'triangle', 0.14); tone(780, 70, 'triangle', 0.12, 60); },
+  cookStart() { tone(330, 90, 'square', 0.06); },
+  dishReady() { tone(880, 90, 'sine', 0.16); tone(1174, 120, 'sine', 0.14, 90); },
+  coin() { tone(988, 80, 'sine', 0.16); tone(1319, 140, 'sine', 0.16, 70); },
+  angry() { tone(220, 180, 'sawtooth', 0.1); tone(185, 220, 'sawtooth', 0.1, 120); },
+  win() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 160, 'triangle', 0.16, i * 120)); },
+  lose() { [392, 330, 262, 196].forEach((f, i) => tone(f, 200, 'triangle', 0.14, i * 140)); },
+};
